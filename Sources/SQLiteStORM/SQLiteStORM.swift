@@ -9,7 +9,7 @@
 import StORM
 import PerfectSQLite
 import PerfectLogger
-
+import Foundation
 
 /// SQLiteConnector sets the connection parameters for the SQLite3 database file access
 /// Usage:
@@ -71,7 +71,7 @@ open class SQLiteStORM: StORM {
 	// Returns an id
 	@discardableResult
 	func execReturnID(_ smt: String, params: [String]) throws -> Any {
-		printDebug(smt, params)
+        printDebug(smt, params)
 
 		if !SQLiteConnector.db.isEmpty {
 			self.connection.database = SQLiteConnector.db
@@ -80,11 +80,13 @@ open class SQLiteStORM: StORM {
 		do {
 			let db = try self.connection.open()
 
-			try db.execute(statement: smt, doBindings: {
-
-				(statement: SQLiteStmt) -> () in
+			try db.execute(statement: smt, doBindings: { (statement: SQLiteStmt) -> () in
 				for i in 0..<params.count {
-					try statement.bind(position: i+1, params[i])
+                    if params[i] == "nil" {
+                        try statement.bindNull(position: i+1)
+                    } else {
+                        try statement.bind(position: i+1, params[i])
+                    }
 				}
 			})
 			let x = db.lastInsertRowID()
@@ -128,13 +130,14 @@ open class SQLiteStORM: StORM {
 		do {
 			let db = try self.connection.open()
 
-			try db.forEachRow(statement: smt, doBindings: {
-
-				(statement: SQLiteStmt) -> () in
+			try db.forEachRow(statement: smt, doBindings: { (statement: SQLiteStmt) -> () in
 				for i in 0..<params.count {
-					try statement.bind(position: i+1, params[i])
+                    if params[i] == "nil" {
+                        try statement.bindNull(position: i)
+                    } else {
+                        try statement.bind(position: i+1, params[i])
+                    }
 				}
-
 			}, handleRow: {(statement: SQLiteStmt, i:Int) -> () in
 				results.append(statement)
 			})
@@ -163,17 +166,12 @@ open class SQLiteStORM: StORM {
 		do {
 			let db = try self.connection.open()
 
-			try db.forEachRow(statement: smt, doBindings: {
-
-				(statement: SQLiteStmt) -> () in
+			try db.forEachRow(statement: smt, doBindings: { (statement: SQLiteStmt) -> () in
 				for i in 0..<params.count {
 					try statement.bind(position: i+1, params[i])
 				}
-
 			}, handleRow: {(statement: SQLiteStmt, i:Int) -> () in
 				rows.append(parseRow(statement))
-//				print(statement.columnCount())
-//				results.append(statement)
 			})
 			self.connection.close(db)
 		} catch {
@@ -268,13 +266,17 @@ open class SQLiteStORM: StORM {
 			var verbage = ""
 			if !key.hasPrefix("internal_") && !key.hasPrefix("_") {
 				verbage = "\(key) "
-				if child.value is Int {
+                if self.check(child.value, is: Int.self) ||
+                    self.check(child.value, is: Bool.self) {
 					verbage += "INTEGER"
-				} else if child.value is Double {
+				} else if self.check(child.value, is: Float.self) ||
+                    self.check(child.value, is: Double.self) {
 					verbage += "REAL"
-				} else if child.value is Double {
-					verbage += "REAL"
-				} else if child.value is UInt || child.value is UInt8 || child.value is UInt16 || child.value is UInt32 || child.value is UInt64 {
+				} else if self.check(child.value, is: UInt.self) ||
+                    self.check(child.value, is: UInt8.self)  ||
+                    self.check(child.value, is: UInt16.self) ||
+                    self.check(child.value, is: UInt32.self) ||
+                    self.check(child.value, is: UInt64.self) {
 					verbage += "BLOB"
 				} else {
 					verbage += "TEXT"
@@ -297,6 +299,13 @@ open class SQLiteStORM: StORM {
 			throw StORMError.error("\(error)")
 		}
 	}
+    
+    func check<T>(_ value: Any, is type: T.Type) -> Bool {
+        guard !(value is T) else { return true }
+        
+        let mirror = Mirror.init(reflecting: value)
+        return mirror.displayStyle == .optional && mirror.subjectType is Optional<T>.Type
+    }
 }
 
 

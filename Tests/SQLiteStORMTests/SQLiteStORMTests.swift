@@ -10,6 +10,9 @@ class User: SQLiteStORM {
 	var firstname		: String = ""
 	var lastname		: String = ""
 	var email			: String = ""
+    var height          : Float = 0.0
+    var weight          : Double = 0.0
+    var age             : Int?
 
 
 	override open func table() -> String {
@@ -21,6 +24,9 @@ class User: SQLiteStORM {
 		firstname		= this.data["firstname"] as! String
 		lastname		= this.data["lastname"] as! String
 		email			= this.data["email"] as! String
+        height          = Float.init(this.data["height"] as! Double)
+        weight          = this.data["weight"] as! Double
+        age             = this.data["age"] as! Int?
 	}
 
 	func rows() -> [User] {
@@ -32,16 +38,6 @@ class User: SQLiteStORM {
 		}
 		return rows
 	}
-
-	// Create the table if needed
-//	public func setup() {
-//		do {
-//			try sqlExec("CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, firstname TEXT, lastname TEXT, email TEXT)")
-//		} catch {
-//			print(error)
-//		}
-//	}
-
 }
 
 
@@ -50,6 +46,9 @@ class SQLiteStORMTests: XCTestCase {
 
 	override func setUp() {
 		super.setUp()
+        
+        try? FileManager.default.removeItem(atPath: "./testdb")
+        
 		SQLiteConnector.db = "./testdb"
 
 		obj = User()
@@ -60,6 +59,27 @@ class SQLiteStORMTests: XCTestCase {
 		}
 
 	}
+    
+    /* =============================================================================================
+     Types
+     ============================================================================================= */
+    func testTypes() {
+        let instance = SQLiteStORM.init()
+        XCTAssert(instance.check(Int(0), is: Int.self))
+        XCTAssert(instance.check(Float(0), is: Float.self))
+        XCTAssert(instance.check(Double(0), is: Double.self))
+        XCTAssert(instance.check(Data.init(), is: Data.self))
+        
+        XCTAssert(instance.check(Optional<Int>.some(0) as Any, is: Int.self))
+        XCTAssert(instance.check(Optional<Float>.some(0) as Any, is: Float.self))
+        XCTAssert(instance.check(Optional<Double>.some(0) as Any, is: Double.self))
+        XCTAssert(instance.check(Optional<Data>.some(.init()) as Any, is: Data.self))
+        
+        XCTAssert(instance.check(Optional<Int>.none as Any, is: Int.self))
+        XCTAssert(instance.check(Optional<Float>.none as Any, is: Float.self))
+        XCTAssert(instance.check(Optional<Double>.none as Any, is: Double.self))
+        XCTAssert(instance.check(Optional<Data>.none as Any, is: Data.self))
+    }
 
 	/* =============================================================================================
 	Save - New
@@ -69,6 +89,10 @@ class SQLiteStORMTests: XCTestCase {
 		//obj.connection = connect    // Use if object was instantiated without connection
 		obj.firstname = "X"
 		obj.lastname = "Y"
+        obj.email = "a@b.c"
+        obj.height = 1.85
+        obj.weight = 110.5
+        obj.age = nil
 
 		do {
 			try obj.save {id in obj.id = id as! Int }
@@ -86,19 +110,27 @@ class SQLiteStORMTests: XCTestCase {
 		//obj.connection = connect    // Use if object was instantiated without connection
 		obj.firstname = "X"
 		obj.lastname = "Y"
+        obj.email = "a@b.c"
+        obj.height = 1.85
+        obj.weight = 110.5
+        obj.age = nil
 
 		do {
 			try obj.save {id in obj.id = id as! Int }
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 
 		obj.firstname = "A"
 		obj.lastname = "B"
+        obj.email = "a@b.c"
+        obj.height = 1.85
+        obj.weight = 110.5
+        obj.age = nil
 		do {
 			try obj.save()
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 		print(obj.errorMsg)
 		XCTAssert(obj.id > 0, "Object not saved (update)")
@@ -130,11 +162,15 @@ class SQLiteStORMTests: XCTestCase {
 		//obj.connection = connect    // Use if object was instantiated without connection
 		obj.firstname = "X"
 		obj.lastname = "Y"
+        obj.email = "a@b.c"
+        obj.height = 1.85
+        obj.weight = 110.5
+        obj.age = nil
 
 		do {
 			try obj.save {id in obj.id = id as! Int }
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 
 		let obj2 = User()
@@ -142,7 +178,7 @@ class SQLiteStORMTests: XCTestCase {
 		do {
 			try obj2.get(obj.id)
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 		XCTAssert(obj.id == obj2.id, "Object not the same (id)")
 		XCTAssert(obj.firstname == obj2.firstname, "Object not the same (firstname)")
@@ -158,11 +194,15 @@ class SQLiteStORMTests: XCTestCase {
 		//obj.connection = connect    // Use if object was instantiated without connection
 		obj.firstname = "X"
 		obj.lastname = "Y"
+        obj.email = "a@b.c"
+        obj.height = 1.85
+        obj.weight = 110.5
+        obj.age = nil
 
 		do {
 			try obj.save {id in obj.id = id as! Int }
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 
 		let obj2 = User()
@@ -171,7 +211,7 @@ class SQLiteStORMTests: XCTestCase {
 		do {
 			try obj2.get()
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 		XCTAssert(obj.id == obj2.id, "Object not the same (id)")
 		XCTAssert(obj.firstname == obj2.firstname, "Object not the same (firstname)")
@@ -190,7 +230,7 @@ class SQLiteStORMTests: XCTestCase {
 			try obj.get(1111111)
 			XCTAssert(obj.results.cursorData.totalRecords == 0, "Object should have found no rows")
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 	}
 
@@ -209,7 +249,7 @@ class SQLiteStORMTests: XCTestCase {
 			try obj.get()
 			XCTAssert(obj.results.cursorData.totalRecords == 0, "Object should have found no rows")
 		} catch {
-			XCTFail(error as! String)
+			XCTFail(error.localizedDescription)
 		}
 	}
 
@@ -235,7 +275,7 @@ class SQLiteStORMTests: XCTestCase {
 		do {
 			try obj.save {id in obj.id = id as! Int }
 		} catch {
-			XCTFail(String(describing: error))
+			XCTFail(error.localizedDescription)
 		}
 
 		do {
@@ -256,7 +296,7 @@ class SQLiteStORMTests: XCTestCase {
 		do {
 			try obj.save {id in obj.id = id as! Int }
 		} catch {
-			XCTFail(String(describing: error))
+			XCTFail(error.localizedDescription)
 		}
 
 		let obj2 = User()
@@ -279,7 +319,7 @@ class SQLiteStORMTests: XCTestCase {
 		do {
 			try obj.save {id in obj.id = id as! Int }
 		} catch {
-			XCTFail(String(describing: error))
+			XCTFail(error.localizedDescription)
 		}
 
 		let obj2 = User()
@@ -325,12 +365,61 @@ class SQLiteStORMTests: XCTestCase {
 		}
 	}
 
-
-
+    /* =============================================================================================
+     New Types
+     ============================================================================================= */
+    func testNewTypes() {
+        let obj = User.init()
+        obj.firstname = "A"
+        obj.lastname = "B"
+        obj.email = "a@b.c"
+        obj.height = 1.85
+        obj.weight = 110.5
+        obj.age = nil
+        
+        do {
+            try obj.save(set: { obj.id = $0 as! Int })
+        } catch { XCTFail("Failed with error: \(error.localizedDescription)") }
+        
+        let obj2 = User.init()
+        do {
+            try obj2.select(whereclause: "id = :1", params: [obj.id], orderby: [])
+        } catch { XCTFail("Failed with error: \(error.localizedDescription)") }
+        
+        XCTAssert(obj2.rows().count > 0)
+        guard let result = obj2.rows().first else { return }
+        XCTAssert(result.id == obj.id)
+        XCTAssert(result.firstname == obj.firstname)
+        XCTAssert(result.lastname == obj.lastname)
+        XCTAssert(result.email == obj.email)
+        XCTAssert(result.height == obj.height)
+        XCTAssert(result.weight == obj.weight)
+        XCTAssert(result.age == nil)
+        
+        obj.age = 30
+        do {
+            try obj.save()
+        } catch { XCTFail("Failed with error: \(error.localizedDescription)") }
+        
+        do {
+            try obj2.select(whereclause: "id = :1", params: [obj.id], orderby: [])
+        } catch { XCTFail("Failed with error: \(error.localizedDescription)") }
+        
+        XCTAssert(obj2.rows().count > 0)
+        guard let result2 = obj2.rows().first else { return }
+        XCTAssert(result2.id == obj.id)
+        XCTAssert(result2.firstname == obj.firstname)
+        XCTAssert(result2.lastname == obj.lastname)
+        XCTAssert(result2.email == obj.email)
+        XCTAssert(result2.height == obj.height)
+        XCTAssert(result2.weight == obj.weight)
+        XCTAssert(result2.age == 30)
+    }
 
 
 	static var allTests : [(String, (SQLiteStORMTests) -> () throws -> Void)] {
 		return [
+            ("testTypes", testTypes),
 			("testSaveNew", testSaveNew),
 			("testSaveUpdate", testSaveUpdate),
 			("testSaveCreate", testSaveCreate),
@@ -343,6 +432,7 @@ class SQLiteStORMTests: XCTestCase {
 			("testDeleteID", testDeleteID),
 			("testFind", testFind),
 			("testSelect", testSelect),
+            ("testNewTypes", testNewTypes)
 		]
 	}
 
